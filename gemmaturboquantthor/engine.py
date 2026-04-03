@@ -21,8 +21,8 @@ from typing import Optional
 
 import mlx.core as mx
 
-from gemmaturboquantthor.cache.cache import TurboQuantKVCache, make_turboquant_cache
-from gemmaturboquantthor.cache.patch import apply_turboquant, remove_turboquant
+from gemmaturboquantthor.cache.cache import TurboQuantKVCache
+from gemmaturboquantthor.gemma4_cache import make_gemma4_turboquant_cache
 
 
 # Gemma 4 model variants (MLX 4-bit quantized, loaded via mlx-vlm)
@@ -164,19 +164,18 @@ class GemmaEngine:
 
     def _make_cache(self):
         """Create TurboQuant cache — compresses full-attention layers, preserves sliding layers."""
-        return make_turboquant_cache(
+        return make_gemma4_turboquant_cache(
             self._text_model,
             key_bits=self.config.key_bits,
             value_bits=self.config.value_bits,
-            head_dim=self.head_dim,
             layer_adaptive=self.config.layer_adaptive,
             seed=self.config.seed,
         )
 
     def _make_standard_cache(self):
         """Create standard (uncompressed) cache for benchmarking."""
-        from mlx_lm.models.cache import make_prompt_cache
-        return make_prompt_cache(self._text_model)
+        from mlx_lm.models.cache import KVCache
+        return [KVCache() for _ in range(self.n_layers)]
 
     def generate(
         self,
@@ -221,7 +220,8 @@ class GemmaEngine:
 
         # Prefill
         t0 = time.perf_counter()
-        logits = self._text_model(input_ids, cache=cache)
+        out = self._text_model(input_ids, cache=cache)
+        logits = out.logits if hasattr(out, 'logits') else out
         mx.eval(logits)
         t_prefill = time.perf_counter() - t0
         prefill_toks = input_ids.shape[1]
@@ -239,7 +239,8 @@ class GemmaEngine:
 
         t_decode_start = time.perf_counter()
         for _ in range(max_tokens - 1):
-            logits = self._text_model(token, cache=cache)
+            out = self._text_model(token, cache=cache)
+            logits = out.logits if hasattr(out, 'logits') else out
             mx.eval(logits)
 
             if temperature <= 0:
@@ -288,7 +289,8 @@ class GemmaEngine:
 
         def _run(cache_list, label):
             t0 = time.perf_counter()
-            logits = self._text_model(input_ids, cache=cache_list)
+            out = self._text_model(input_ids, cache=cache_list)
+            logits = out.logits if hasattr(out, 'logits') else out
             mx.eval(logits)
             t_prefill = time.perf_counter() - t0
 
@@ -298,7 +300,8 @@ class GemmaEngine:
 
             t_dec = time.perf_counter()
             for _ in range(max_tokens - 1):
-                logits = self._text_model(token, cache=cache_list)
+                out = self._text_model(token, cache=cache_list)
+                logits = out.logits if hasattr(out, 'logits') else out
                 mx.eval(logits)
                 token = mx.argmax(logits[:, -1, :], axis=-1, keepdims=True)
                 tok_id = token.item()
