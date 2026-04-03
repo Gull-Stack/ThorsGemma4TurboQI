@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gemmaturboquantthor"
+version = "0.1.0"
+description = "Gemma 4 31B + TurboQuant KV cache compression for Apple Silicon"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "mlx>=0.22",
+    "mlx-lm>=0.20",
+    "mlx-vlm>=0.4.3",
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+server = ["fastapi>=0.100", "uvicorn>=0.20", "sse-starlette>=1.0"]
+
+[project.scripts]
+gemmatq = "gemmaturboquantthor.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gemmaturboquantthor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
