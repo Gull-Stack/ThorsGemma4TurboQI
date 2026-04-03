@@ -33,7 +33,7 @@ MODELS = {
     "2b": "mlx-community/gemma-4-2b-it-4bit",
 }
 
-DEFAULT_MODEL = "31b"
+DEFAULT_MODEL = "27b-a4b"
 
 # Gemma 4 layer types from config
 GEMMA4_FULL_ATTENTION_INDICES = [5, 11, 17, 23, 29, 35, 41, 47, 53, 59]
